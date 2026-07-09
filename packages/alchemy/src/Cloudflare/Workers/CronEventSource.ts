@@ -198,19 +198,25 @@ import { isWorkerEvent, Worker } from "./Worker.ts";
  *
  * @see https://developers.cloudflare.com/workers/configuration/cron-triggers/
  */
+type CronEventSourceRequirements<Req> = Exclude<Req, RuntimeContext>;
+
 export const cron = <Req = never>(
   expression: string,
   process: (
     controller: cf.ScheduledController,
   ) => Effect.Effect<void, unknown, Req>,
-) => CronEventSource.use((source) => source(expression, process));
+): Effect.Effect<
+  void,
+  never,
+  CronEventSource | CronEventSourceRequirements<Req>
+> => CronEventSource.use((source) => source(expression, process));
 
 export type CronEventSourceService = <Req = never>(
   expression: string,
   process: (
     controller: cf.ScheduledController,
   ) => Effect.Effect<void, unknown, Req>,
-) => Effect.Effect<void, never, never>;
+) => Effect.Effect<void, never, CronEventSourceRequirements<Req>>;
 
 export class CronEventSource extends Context.Service<
   CronEventSource,
