@@ -1,13 +1,9 @@
 import type * as runtime from "@cloudflare/workers-types";
-import {
-  Credentials,
-  formatHeaders,
-} from "@distilled.cloud/cloudflare/Credentials";
+import type { Credentials } from "@distilled.cloud/cloudflare/Credentials";
 import * as vectorize from "@distilled.cloud/cloudflare/vectorize";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import * as HttpClient from "effect/unstable/http/HttpClient";
-import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest";
+import type * as HttpClient from "effect/unstable/http/HttpClient";
 import { CloudflareEnvironment } from "../CloudflareEnvironment.ts";
 import { type SearchIndexClient, SearchIndex } from "./SearchIndex.ts";
 import type { Index } from "./VectorizeIndex.ts";
@@ -80,52 +76,6 @@ export const SearchIndexLocal = Layer.effect(
           fn(name).pipe(Effect.provideContext(context)),
         ).pipe(Effect.orDie);
 
-      // insert/upsert take an ndjson vector payload. Cloudflare's v2 endpoint
-      // is `multipart/form-data` with a part literally named `vectors` (the
-      // distilled op models it as a generic `body` file part, which Cloudflare
-      // rejects), so build the request directly with the current credentials.
-      const uploadVectors = (
-        op: "insert" | "upsert",
-        name: string,
-        vectors: runtime.VectorizeVector[],
-      ) =>
-        Effect.gen(function* () {
-          const client = yield* HttpClient.HttpClient;
-          const creds = yield* yield* Credentials;
-          const form = new FormData();
-          form.append(
-            "vectors",
-            new Blob([toNdjson(vectors)]),
-            "vectors.ndjson",
-          );
-          const res = yield* client.execute(
-            HttpClientRequest.post(
-              `${creds.apiBaseUrl}/accounts/${accountId}/vectorize/v2/indexes/${name}/${op}`,
-            ).pipe(
-              HttpClientRequest.setHeaders(formatHeaders(creds)),
-              HttpClientRequest.bodyFormData(form),
-            ),
-          );
-          const json = (yield* res.json) as {
-            // Cloudflare returns the mutation id camelCased on the wire.
-            result?: { mutationId?: string | null } | null;
-            success?: boolean;
-            errors?: unknown;
-          };
-          if (res.status >= 400 || json.success === false) {
-            return yield* Effect.die(
-              new Error(
-                `SearchIndexLocal: ${op} failed (${res.status}): ${JSON.stringify(
-                  json.errors ?? json,
-                )}`,
-              ),
-            );
-          }
-          return {
-            mutationId: json.result?.mutationId ?? "",
-          } satisfies runtime.VectorizeAsyncMutation;
-        });
-
       return {
         raw: Effect.die(
           new Error(
@@ -159,9 +109,25 @@ export const SearchIndexLocal = Layer.effect(
             ),
           ),
         insert: (vectors) =>
-          local((name) => uploadVectors("insert", name, vectors)),
+          local((name) =>
+            vectorize
+              .insertIndex({
+                accountId,
+                indexName: name,
+                vectors: toNdjsonBlob(vectors),
+              })
+              .pipe(Effect.map(toMutation)),
+          ),
         upsert: (vectors) =>
-          local((name) => uploadVectors("upsert", name, vectors)),
+          local((name) =>
+            vectorize
+              .upsertIndex({
+                accountId,
+                indexName: name,
+                vectors: toNdjsonBlob(vectors),
+              })
+              .pipe(Effect.map(toMutation)),
+          ),
         deleteByIds: (ids) =>
           local((name) =>
             vectorize
@@ -182,6 +148,13 @@ export const SearchIndexLocal = Layer.effect(
     });
   }),
 );
+
+/**
+ * Serialize vectors to an ndjson Blob for the `vectors` multipart part of the
+ * Vectorize v2 insert/upsert endpoints.
+ */
+const toNdjsonBlob = (vectors: runtime.VectorizeVector[]): Blob =>
+  new Blob([toNdjson(vectors)]);
 
 /** Serialize vectors to ndjson — one JSON vector per line. */
 const toNdjson = (vectors: runtime.VectorizeVector[]): string =>
