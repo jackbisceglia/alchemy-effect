@@ -826,7 +826,7 @@
     },
     "packages/alchemy": {
       "name": "alchemy",
-      "version": "2.0.0-beta.61",
+      "version": "2.0.0-beta.62",
       "bin": {
         "alchemy": "./bin/cli.js",
       },
@@ -926,7 +926,7 @@
     },
     "packages/better-auth": {
       "name": "@alchemy.run/better-auth",
-      "version": "2.0.0-beta.61",
+      "version": "2.0.0-beta.62",
       "dependencies": {
         "alchemy": "workspace:*",
         "effect": "catalog:",
@@ -937,7 +937,7 @@
     },
     "packages/pr-package": {
       "name": "@alchemy.run/pr-package",
-      "version": "2.0.0-beta.61",
+      "version": "2.0.0-beta.62",
       "dependencies": {
         "alchemy": "workspace:*",
         "effect": "catalog:",
