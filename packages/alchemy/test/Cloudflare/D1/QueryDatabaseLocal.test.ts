@@ -61,16 +61,10 @@ test.provider(
                   .bind("1")
                   .first<string>("name");
 
-                const numericBind = yield* db
-                  .prepare("SELECT ? AS value")
-                  .bind(42)
-                  .first<number>("value");
-
                 return {
                   databaseId: yield* databaseId,
                   users: rows.results,
                   first,
-                  numericBind,
                 };
               });
             }).pipe(Effect.provide(Cloudflare.D1.QueryDatabaseLocal)),
@@ -86,7 +80,42 @@ test.provider(
         { id: "2", name: "Grace" },
       ]);
       expect(out.first).toBe("Ada");
-      expect(out.numericBind).toBe(42);
+
+      yield* stack.destroy();
+    }).pipe(logLevel),
+  { timeout: 120_000 },
+);
+
+// Expected to fail until D1 request parameters support numeric values.
+test.provider(
+  "QueryDatabaseLocal: binds numeric prepared-statement parameters",
+  (stack) =>
+    Effect.gen(function* () {
+      yield* stack.destroy();
+
+      const out = yield* stack.deploy(
+        Effect.gen(function* () {
+          const database = yield* Cloudflare.D1.Database("NumericBindDatabase");
+
+          const Query = Action(
+            "QueryNumericBind",
+            Effect.gen(function* () {
+              const db = yield* Cloudflare.D1.QueryDatabase(database);
+
+              return Effect.fn(function* () {
+                return yield* db
+                  .prepare("SELECT ? AS value")
+                  .bind(42)
+                  .first<number>("value");
+              });
+            }).pipe(Effect.provide(Cloudflare.D1.QueryDatabaseLocal)),
+          );
+
+          return yield* Query({});
+        }),
+      );
+
+      expect(out).toBe(42);
 
       yield* stack.destroy();
     }).pipe(logLevel),
