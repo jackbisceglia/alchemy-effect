@@ -61,10 +61,16 @@ test.provider(
                   .bind("1")
                   .first<string>("name");
 
+                const numericBind = yield* db
+                  .prepare("SELECT ? AS value")
+                  .bind(42)
+                  .first<number>("value");
+
                 return {
                   databaseId: yield* databaseId,
                   users: rows.results,
                   first,
+                  numericBind,
                 };
               });
             }).pipe(Effect.provide(Cloudflare.D1.QueryDatabaseLocal)),
@@ -80,6 +86,7 @@ test.provider(
         { id: "2", name: "Grace" },
       ]);
       expect(out.first).toBe("Ada");
+      expect(out.numericBind).toBe(42);
 
       yield* stack.destroy();
     }).pipe(logLevel),
