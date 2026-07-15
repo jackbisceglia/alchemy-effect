@@ -97,12 +97,14 @@ test.provider(
         Effect.gen(function* () {
           const database = yield* Cloudflare.D1.Database("NumericBindDatabase");
 
+          // Exercise the Local binding inside an Action, matching its intended use.
           const Query = Action(
             "QueryNumericBind",
             Effect.gen(function* () {
               const db = yield* Cloudflare.D1.QueryDatabase(database);
 
               return Effect.fn(function* () {
+                // Select the parameter directly to isolate binding from table schema.
                 return yield* db
                   .prepare("SELECT ? AS value")
                   .bind(42)
