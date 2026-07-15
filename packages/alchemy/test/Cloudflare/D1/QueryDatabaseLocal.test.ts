@@ -86,7 +86,8 @@ test.provider(
   { timeout: 120_000 },
 );
 
-// Expected to fail until D1 request parameters support numeric values.
+// Expected to fail before reaching D1: Distilled validates params as string[],
+// so .bind(42) throws "Expected string, got 42" during request encoding.
 test.provider(
   "QueryDatabaseLocal: binds numeric prepared-statement parameters",
   (stack) =>
@@ -97,14 +98,13 @@ test.provider(
         Effect.gen(function* () {
           const database = yield* Cloudflare.D1.Database("NumericBindDatabase");
 
-          // Exercise the Local binding inside an Action, matching its intended use.
           const Query = Action(
             "QueryNumericBind",
             Effect.gen(function* () {
               const db = yield* Cloudflare.D1.QueryDatabase(database);
 
               return Effect.fn(function* () {
-                // Select the parameter directly to isolate binding from table schema.
+                // Selecting the parameter directly rules out table schema or seed behavior.
                 return yield* db
                   .prepare("SELECT ? AS value")
                   .bind(42)
