@@ -294,9 +294,7 @@ test(
     );
 
     const httpClient = (yield* HttpClient.HttpClient).pipe(withCounterKey(key));
-    const fromB = yield* httpClient
-      .get(`${urlB}/do`)
-      .pipe(Effect.timeout(requestTimeout), Effect.retry(readinessRetry));
+    const fromB = yield* requestUntilReady(httpClient.get(`${urlB}/do`));
     expect(fromB.status).toBe(200);
     expect((yield* fromB.json) as { value: number }).toEqual({ value: 2 });
   }).pipe(logLevel),

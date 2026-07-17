@@ -903,6 +903,22 @@ bun run test --tui
 
 (`examples/` still use plain `bun test`.)
 
+### Cleaning leaked test resources
+
+If an interrupted live-cloud test leaves resources behind, do **not** add
+test-specific API cleanup helpers, adoption workarounds, or alternate names to
+make the test pass. Clean the testing account with the account-wide teardown
+command, then rerun the failing test:
+
+```bash
+bun nuke
+bun clear:state --profile testing
+```
+
+Lifecycle tests should continue to validate normal stack ownership and cleanup;
+they must not silently adopt or directly delete leaked resources from earlier
+runs.
+
 Additional flags beyond vitest:
 
 | Flag              | Default | Purpose                                                       |
