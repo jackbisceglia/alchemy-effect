@@ -1267,7 +1267,7 @@ export const Worker: ResourceClassLike<Worker> &
           | WorkerServices
           | Container.Application<any>
           | PlatformServices
-          | Tag,
+          | Tag = never,
       >(
         id: Id,
         props: InputProps<WorkerProps>,
@@ -1311,7 +1311,7 @@ export const Worker: ResourceClassLike<Worker> &
       Req extends
         | WorkerServices
         | Container.Application<any>
-        | PlatformServices,
+        | PlatformServices = never,
     >(
       id: string,
       props: InputProps<WorkerProps>,
